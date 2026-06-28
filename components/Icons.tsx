@@ -86,3 +86,20 @@ export function SettingsIcon({ className = "h-5 w-5" }: IconProps) {
     </svg>
   );
 }
+
+export function FlameIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 2c0 3-4 4.5-4 8a4 4 0 0 0 1.2 2.86C8.5 12.5 9 11 10 10.5c-.3 1.6.7 2.3 1.4 3 .8.8 1.1 1.7.6 2.9 1.3-.5 2-1.7 2-3.1 1 .6 1.5 1.6 1.5 2.7A4 4 0 0 1 12 22a5 5 0 0 1-5-5c0-4 5-6 5-10 1.5.8 2.6 1.9 3.3 3.2C16.4 7.6 14 4.5 12 2z" />
+    </svg>
+  );
+}
+
+export function UndoIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M3 7v6h6" />
+      <path d="M3.5 13a9 9 0 1 0 2.6-6.4L3 9" />
+    </svg>
+  );
+}
