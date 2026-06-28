@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DayIndex, Item } from "../lib/types";
 import { SCHOOL_DAYS, todayIndex, todayKey } from "../lib/days";
 import {
-  loadChecked,
+  loadChecks,
   loadItems,
   newId,
-  saveChecked,
+  pruneChecks,
+  saveChecks,
   saveItems,
+  type Checks,
 } from "../lib/storage";
 import { DEFAULT_ITEMS } from "../lib/defaults";
 import {
@@ -21,16 +23,16 @@ import {
 
 export function useBackpack() {
   const [items, setItems] = useState<Item[]>([]);
-  const [checkedIds, setCheckedIds] = useState<string[]>([]);
+  const [checks, setChecks] = useState<Checks>({});
   const [streak, setStreak] = useState<Streak>({ count: 0, lastDate: "" });
   const [loaded, setLoaded] = useState(false);
-  const dayRef = useRef<string>(todayKey());
+  const [dayKey, setDayKey] = useState(todayKey());
 
   // Hydrate from localStorage after mount (avoids SSR mismatch).
   useEffect(() => {
     const stored = loadItems();
     setItems(stored ?? DEFAULT_ITEMS);
-    setCheckedIds(loadChecked().ids);
+    setChecks(loadChecks());
     setStreak(loadStreak());
     setLoaded(true);
   }, []);
@@ -41,20 +43,20 @@ export function useBackpack() {
   }, [items, loaded]);
 
   useEffect(() => {
-    if (loaded) saveChecked({ date: todayKey(), ids: checkedIds });
-  }, [checkedIds, loaded]);
+    if (loaded) saveChecks(checks);
+  }, [checks, loaded]);
 
   useEffect(() => {
     if (loaded) saveStreak(streak);
   }, [streak, loaded]);
 
-  // If the app sat open past midnight, clear yesterday's checkmarks.
+  // Notice the date rolling over (app left open past midnight) and re-render.
   useEffect(() => {
     const check = () => {
-      const key = todayKey();
-      if (key !== dayRef.current) {
-        dayRef.current = key;
-        setCheckedIds([]);
+      const k = todayKey();
+      if (k !== dayKey) {
+        setDayKey(k);
+        setChecks((c) => pruneChecks(c));
       }
     };
     document.addEventListener("visibilitychange", check);
@@ -63,27 +65,37 @@ export function useBackpack() {
       document.removeEventListener("visibilitychange", check);
       clearInterval(t);
     };
+  }, [dayKey]);
+
+  const checksFor = useCallback(
+    (dateKey: string): string[] => checks[dateKey] ?? [],
+    [checks]
+  );
+
+  const toggle = useCallback((dateKey: string, id: string) => {
+    setChecks((prev) => {
+      const current = prev[dateKey] ?? [];
+      const next = current.includes(id)
+        ? current.filter((x) => x !== id)
+        : [...current, id];
+      return { ...prev, [dateKey]: next };
+    });
   }, []);
 
-  // Is today's full list packed? (Only school days count toward the streak.)
+  // Is TODAY's full list packed? (Only school days count toward the streak.)
   const todayAllPacked = useMemo(() => {
     if (!loaded) return false;
     const ti = todayIndex();
     if (!SCHOOL_DAYS.includes(ti)) return false;
     const todays = items.filter((it) => it.days.includes(ti));
-    return todays.length > 0 && todays.every((it) => checkedIds.includes(it.id));
-  }, [items, checkedIds, loaded]);
+    const packed = checks[dayKey] ?? [];
+    return todays.length > 0 && todays.every((it) => packed.includes(it.id));
+  }, [items, checks, dayKey, loaded]);
 
   // Award the streak the moment today's list is finished.
   useEffect(() => {
     if (todayAllPacked) setStreak((s) => bumpStreak(s));
   }, [todayAllPacked]);
-
-  const toggleCheck = useCallback((id: string) => {
-    setCheckedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  }, []);
 
   const addItem = useCallback((name: string, emoji: string, days: DayIndex[]) => {
     setItems((prev) => [...prev, { id: newId(), name, emoji, days }]);
@@ -101,7 +113,11 @@ export function useBackpack() {
   // The caller captures the item/index for Undo before calling this.
   const removeItem = useCallback((id: string) => {
     setItems((prev) => prev.filter((it) => it.id !== id));
-    setCheckedIds((prev) => prev.filter((x) => x !== id));
+    setChecks((prev) => {
+      const next: Checks = {};
+      for (const k in prev) next[k] = prev[k].filter((x) => x !== id);
+      return next;
+    });
   }, []);
 
   const insertItem = useCallback((item: Item, index: number) => {
@@ -114,12 +130,12 @@ export function useBackpack() {
 
   return {
     items,
-    checkedIds,
     loaded,
     streak: effectiveStreak(streak),
-    packedToday: streak.lastDate === todayKey(),
+    packedToday: streak.lastDate === dayKey,
     todayAllPacked,
-    toggleCheck,
+    checksFor,
+    toggle,
     addItem,
     updateItem,
     removeItem,

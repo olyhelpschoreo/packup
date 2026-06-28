@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useBackpack } from "../hooks/useBackpack";
 import type { DayIndex, Item } from "../lib/types";
-import { DAY_LONG, DAY_SHORT, todayIndex, WEEK_ORDER } from "../lib/days";
+import {
+  DAY_LONG,
+  DAY_SHORT,
+  dateKeyForWeekday,
+  relativeDayLabel,
+  todayIndex,
+  WEEK_ORDER,
+} from "../lib/days";
+import { SUGGESTIONS } from "../lib/defaults";
 import { Header } from "../components/Header";
 import { ItemForm } from "../components/ItemForm";
 import { Confetti } from "../components/Confetti";
@@ -18,7 +26,7 @@ import {
 } from "../components/Icons";
 
 type Tab = "pack" | "items";
-type Editing = { item?: Item } | null;
+type Editing = { item?: Item; preset?: { name: string; emoji: string } } | null;
 type Undo = { item: Item; index: number } | null;
 
 export default function Page() {
@@ -28,30 +36,39 @@ export default function Page() {
   const [editing, setEditing] = useState<Editing>(null);
   const [undo, setUndo] = useState<Undo>(null);
   const [confetti, setConfetti] = useState(0);
-  const wasPacked = useRef(false);
+  const packRef = useRef<{ key: string; packed: boolean }>({ key: "", packed: false });
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const today = todayIndex();
   const isToday = viewDay === today;
+  const selectedKey = dateKeyForWeekday(viewDay);
+  const selectedChecks = bp.checksFor(selectedKey);
 
   const dayItems = useMemo(
     () => bp.items.filter((it) => it.days.includes(viewDay)),
     [bp.items, viewDay]
   );
 
-  const packedCount = isToday
-    ? dayItems.filter((it) => bp.checkedIds.includes(it.id)).length
-    : 0;
-  const allPacked = isToday && dayItems.length > 0 && packedCount === dayItems.length;
+  const packedCount = dayItems.filter((it) => selectedChecks.includes(it.id)).length;
+  const allPacked = dayItems.length > 0 && packedCount === dayItems.length;
+  const ringPct = dayItems.length ? packedCount / dayItems.length : 0;
 
-  // Fire confetti + a buzz the moment today's list becomes complete.
+  // How many things are still unpacked for *today* (for the tab badge).
+  const remainingToday = useMemo(() => {
+    const todays = bp.items.filter((it) => it.days.includes(today));
+    const packed = bp.checksFor(dateKeyForWeekday(today));
+    return todays.filter((it) => !packed.includes(it.id)).length;
+  }, [bp.items, bp.checksFor, today]);
+
+  // Fire confetti + a buzz the moment a day's list becomes complete.
   useEffect(() => {
-    if (allPacked && !wasPacked.current) {
+    const prev = packRef.current;
+    if (allPacked && prev.key === selectedKey && !prev.packed) {
       setConfetti((c) => c + 1);
       navigator.vibrate?.([12, 40, 18]);
     }
-    wasPacked.current = allPacked;
-  }, [allPacked]);
+    packRef.current = { key: selectedKey, packed: allPacked };
+  }, [allPacked, selectedKey]);
 
   const doDelete = (item: Item) => {
     const index = bp.items.findIndex((x) => x.id === item.id);
@@ -69,15 +86,19 @@ export default function Page() {
 
   const check = (id: string) => {
     navigator.vibrate?.(8);
-    bp.toggleCheck(id);
+    bp.toggle(selectedKey, id);
   };
+
+  // Suggestions not already on the list (case-insensitive).
+  const freshSuggestions = useMemo(() => {
+    const have = new Set(bp.items.map((it) => it.name.trim().toLowerCase()));
+    return SUGGESTIONS.filter((s) => !have.has(s.name.toLowerCase()));
+  }, [bp.items]);
 
   // Avoid a flash of default content before localStorage hydrates.
   if (!bp.loaded) {
     return <main className="min-h-dvh" aria-busy />;
   }
-
-  const ringPct = dayItems.length ? packedCount / dayItems.length : 0;
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-28 pt-5">
@@ -126,21 +147,18 @@ export default function Page() {
           <div className="flex items-center justify-between gap-3 rounded-3xl border border-border bg-surface p-4 shadow-[var(--shadow)]">
             <div className="min-w-0">
               <h2 className="text-2xl font-extrabold tracking-tight">
-                {isToday ? "Pack for today" : DAY_LONG[viewDay]}
+                {isToday
+                  ? "Pack for today"
+                  : relativeDayLabel(viewDay) === "Tomorrow"
+                    ? "Pack for tomorrow"
+                    : DAY_LONG[viewDay]}
               </h2>
               <p className="text-sm text-muted">
-                {isToday ? DAY_LONG[today] : "Pack the night before"}
-                {dayItems.length > 0 && (
-                  <>
-                    {" · "}
-                    {isToday
-                      ? `${packedCount}/${dayItems.length} packed`
-                      : `${dayItems.length} ${dayItems.length === 1 ? "thing" : "things"}`}
-                  </>
-                )}
+                {isToday ? DAY_LONG[today] : relativeDayLabel(viewDay)}
+                {dayItems.length > 0 && ` · ${packedCount}/${dayItems.length} packed`}
               </p>
             </div>
-            {isToday && dayItems.length > 0 && (
+            {dayItems.length > 0 && (
               <div className="relative h-14 w-14 shrink-0">
                 <svg viewBox="0 0 56 56" className="h-14 w-14 -rotate-90">
                   <circle
@@ -175,11 +193,15 @@ export default function Page() {
             <div className="animate-pop flex items-center gap-3 rounded-3xl border border-primary/30 bg-gradient-to-br from-teal-500/10 to-emerald-400/10 p-4">
               <span className="text-3xl">🎉</span>
               <div>
-                <p className="font-bold text-primary">All packed!</p>
+                <p className="font-bold text-primary">
+                  {isToday ? "All packed!" : `${DAY_LONG[viewDay]} is ready!`}
+                </p>
                 <p className="text-sm text-muted">
-                  {bp.streak > 1
-                    ? `${bp.streak}-day streak — you're on fire. 🔥`
-                    : "You're ready for school. Go you."}
+                  {isToday
+                    ? bp.streak > 1
+                      ? `${bp.streak}-day streak — you're on fire. 🔥`
+                      : "You're ready for school. Go you."
+                    : "Packed ahead — nice work."}
                 </p>
               </div>
             </div>
@@ -191,7 +213,7 @@ export default function Page() {
           ) : (
             <ul className="space-y-2.5">
               {dayItems.map((it, i) => {
-                const checked = isToday && bp.checkedIds.includes(it.id);
+                const checked = selectedChecks.includes(it.id);
                 return (
                   <li
                     key={it.id}
@@ -200,13 +222,12 @@ export default function Page() {
                   >
                     <button
                       type="button"
-                      disabled={!isToday}
                       onClick={() => check(it.id)}
-                      className={`flex w-full items-center gap-3 rounded-3xl border p-3.5 text-left shadow-[var(--shadow)] transition-all ${
+                      className={`flex w-full items-center gap-3 rounded-3xl border p-3.5 text-left shadow-[var(--shadow)] transition-all active:scale-[0.98] ${
                         checked
                           ? "border-primary/40 bg-primary/5"
                           : "border-border bg-surface"
-                      } ${isToday ? "active:scale-[0.98]" : "opacity-90"}`}
+                      }`}
                     >
                       <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-surface-2 text-2xl">
                         {it.emoji}
@@ -218,17 +239,15 @@ export default function Page() {
                       >
                         {it.name}
                       </span>
-                      {isToday && (
-                        <span
-                          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 transition-colors ${
-                            checked
-                              ? "border-primary bg-primary text-primary-fg"
-                              : "border-border text-transparent"
-                          }`}
-                        >
-                          {checked && <CheckIcon className="h-4 w-4 animate-check" />}
-                        </span>
-                      )}
+                      <span
+                        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 transition-colors ${
+                          checked
+                            ? "border-primary bg-primary text-primary-fg"
+                            : "border-border text-transparent"
+                        }`}
+                      >
+                        {checked && <CheckIcon className="h-4 w-4 animate-check" />}
+                      </span>
                     </button>
                   </li>
                 );
@@ -249,10 +268,32 @@ export default function Page() {
             </button>
           </div>
 
+          {/* Quick add */}
+          {freshSuggestions.length > 0 && (
+            <div className="rounded-3xl border border-border bg-surface p-3.5 shadow-[var(--shadow)]">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                Quick add
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {freshSuggestions.map((s) => (
+                  <button
+                    key={s.name}
+                    type="button"
+                    onClick={() => setEditing({ preset: s })}
+                    className="flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-sm font-medium active:scale-95"
+                  >
+                    <span>{s.emoji}</span>
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {bp.items.length === 0 ? (
             <p className="rounded-3xl border border-dashed border-border p-8 text-center text-muted">
-              No items yet. Tap <span className="font-semibold text-text">Add</span> to
-              build your packing list.
+              No items yet. Tap a <span className="font-semibold text-text">Quick add</span>{" "}
+              above or <span className="font-semibold text-text">Add</span> your own.
             </p>
           ) : (
             <ul className="space-y-2.5">
@@ -315,6 +356,7 @@ export default function Page() {
           <TabButton
             label="Pack"
             active={tab === "pack"}
+            badge={remainingToday}
             onClick={() => {
               setViewDay(todayIndex());
               setTab("pack");
@@ -333,6 +375,7 @@ export default function Page() {
       {editing && (
         <ItemForm
           initial={editing.item}
+          preset={editing.preset}
           onSave={(name, emoji, days) => {
             if (editing.item) bp.updateItem(editing.item.id, { name, emoji, days });
             else bp.addItem(name, emoji, days);
@@ -350,21 +393,30 @@ function TabButton({
   active,
   onClick,
   icon,
+  badge = 0,
 }: {
   label: string;
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
+  badge?: number;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-semibold transition-colors ${
+      className={`relative flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-semibold transition-colors ${
         active ? "text-primary" : "text-muted"
       }`}
     >
-      {icon}
+      <span className="relative">
+        {icon}
+        {badge > 0 && (
+          <span className="absolute -right-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent px-1 text-[10px] font-bold text-white">
+            {badge}
+          </span>
+        )}
+      </span>
       {label}
     </button>
   );

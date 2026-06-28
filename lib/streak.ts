@@ -1,5 +1,5 @@
 import type { DayIndex } from "./types";
-import { SCHOOL_DAYS, todayKey } from "./days";
+import { keyFromDate, SCHOOL_DAYS, todayKey } from "./days";
 
 export type Streak = { count: number; lastDate: string };
 
@@ -25,14 +25,6 @@ export function saveStreak(s: Streak): void {
   } catch {
     /* ignore */
   }
-}
-
-function pad(n: number): string {
-  return String(n).padStart(2, "0");
-}
-
-function keyFromDate(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 // The most recent school day strictly before `d`.

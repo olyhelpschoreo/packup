@@ -20,9 +20,31 @@ export function todayIndex(): DayIndex {
 }
 
 // Local YYYY-MM-DD (not UTC — avoids the date flipping at the wrong hour).
-export function todayKey(): string {
-  const d = new Date();
+export function keyFromDate(d: Date): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${m}-${day}`;
+}
+
+export function todayKey(): string {
+  return keyFromDate(new Date());
+}
+
+// How many days from today until the next occurrence of weekday `d` (0 = today).
+export function daysUntilWeekday(d: DayIndex): number {
+  return (d - new Date().getDay() + 7) % 7;
+}
+
+// The actual calendar date key for the upcoming occurrence of weekday `d`.
+export function dateKeyForWeekday(d: DayIndex): string {
+  const t = new Date();
+  const x = new Date(t.getFullYear(), t.getMonth(), t.getDate() + daysUntilWeekday(d));
+  return keyFromDate(x);
+}
+
+export function relativeDayLabel(d: DayIndex): string {
+  const n = daysUntilWeekday(d);
+  if (n === 0) return "Today";
+  if (n === 1) return "Tomorrow";
+  return `In ${n} days`;
 }

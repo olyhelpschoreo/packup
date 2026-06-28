@@ -1,8 +1,12 @@
-import type { CheckedState, Item } from "./types";
+import type { Item } from "./types";
 import { todayKey } from "./days";
 
 const ITEMS_KEY = "packup.items";
-const CHECKED_KEY = "packup.checked";
+const CHECKS_KEY = "packup.checks";
+
+// Packed checkmarks keyed by calendar date, so you can pack ahead and the
+// checks survive the day rollover. Past dates are pruned on load.
+export type Checks = Record<string, string[]>;
 
 export function loadItems(): Item[] | null {
   if (typeof window === "undefined") return null;
@@ -25,25 +29,32 @@ export function saveItems(items: Item[]): void {
   }
 }
 
-// Returns today's checked ids, discarding any from a previous day.
-export function loadChecked(): CheckedState {
-  const fresh: CheckedState = { date: todayKey(), ids: [] };
-  if (typeof window === "undefined") return fresh;
+// Drop any dates before today (string compare works for YYYY-MM-DD).
+export function pruneChecks(map: Checks): Checks {
+  const today = todayKey();
+  const out: Checks = {};
+  for (const k in map) {
+    if (k >= today && Array.isArray(map[k])) out[k] = map[k];
+  }
+  return out;
+}
+
+export function loadChecks(): Checks {
+  if (typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(CHECKED_KEY);
-    if (!raw) return fresh;
-    const parsed = JSON.parse(raw) as CheckedState;
-    if (parsed.date !== todayKey()) return fresh;
-    return { date: parsed.date, ids: Array.isArray(parsed.ids) ? parsed.ids : [] };
+    const raw = localStorage.getItem(CHECKS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? pruneChecks(parsed) : {};
   } catch {
-    return fresh;
+    return {};
   }
 }
 
-export function saveChecked(state: CheckedState): void {
+export function saveChecks(map: Checks): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(CHECKED_KEY, JSON.stringify(state));
+    localStorage.setItem(CHECKS_KEY, JSON.stringify(map));
   } catch {
     /* ignore */
   }

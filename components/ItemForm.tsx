@@ -9,13 +9,14 @@ import { CloseIcon } from "./Icons";
 
 type Props = {
   initial?: Item;
+  preset?: { name?: string; emoji?: string };
   onSave: (name: string, emoji: string, days: DayIndex[]) => void;
   onCancel: () => void;
 };
 
-export function ItemForm({ initial, onSave, onCancel }: Props) {
-  const [name, setName] = useState(initial?.name ?? "");
-  const [emoji, setEmoji] = useState(initial?.emoji ?? "🎒");
+export function ItemForm({ initial, preset, onSave, onCancel }: Props) {
+  const [name, setName] = useState(initial?.name ?? preset?.name ?? "");
+  const [emoji, setEmoji] = useState(initial?.emoji ?? preset?.emoji ?? "🎒");
   const [days, setDays] = useState<DayIndex[]>(initial?.days ?? [...SCHOOL_DAYS]);
 
   const canSave = name.trim().length > 0 && days.length > 0;
