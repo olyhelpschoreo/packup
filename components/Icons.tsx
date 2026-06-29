@@ -95,6 +95,15 @@ export function FlameIcon({ className = "h-5 w-5" }: IconProps) {
   );
 }
 
+export function SparklesIcon({ className = "h-5 w-5" }: IconProps) {
+  return (
+    <svg className={className} {...base}>
+      <path d="M12 4l1.6 4.4L18 10l-4.4 1.6L12 16l-1.6-4.4L6 10l4.4-1.6L12 4z" />
+      <path d="M18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8L18 14z" />
+    </svg>
+  );
+}
+
 export function UndoIcon({ className = "h-5 w-5" }: IconProps) {
   return (
     <svg className={className} {...base}>

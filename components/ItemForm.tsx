@@ -2,21 +2,21 @@
 
 import { useEffect, useState } from "react";
 import type { DayIndex, Item } from "../lib/types";
-import { EMOJI_CHOICES } from "../lib/defaults";
 import { SCHOOL_DAYS } from "../lib/days";
 import { DayPicker } from "./DayPicker";
 import { CloseIcon } from "./Icons";
+import { ItemIcon, ITEM_ICONS } from "./ItemIcons";
 
 type Props = {
   initial?: Item;
-  preset?: { name?: string; emoji?: string };
-  onSave: (name: string, emoji: string, days: DayIndex[]) => void;
+  preset?: { name?: string; icon?: string };
+  onSave: (name: string, icon: string, days: DayIndex[]) => void;
   onCancel: () => void;
 };
 
 export function ItemForm({ initial, preset, onSave, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? preset?.name ?? "");
-  const [emoji, setEmoji] = useState(initial?.emoji ?? preset?.emoji ?? "🎒");
+  const [icon, setIcon] = useState(initial?.icon ?? preset?.icon ?? "backpack");
   const [days, setDays] = useState<DayIndex[]>(initial?.days ?? [...SCHOOL_DAYS]);
 
   const canSave = name.trim().length > 0 && days.length > 0;
@@ -58,13 +58,13 @@ export function ItemForm({ initial, preset, onSave, onCancel }: Props) {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (canSave) onSave(name.trim(), emoji, days);
+            if (canSave) onSave(name.trim(), icon, days);
           }}
           className="space-y-4"
         >
           <div className="flex items-center gap-3">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-surface-2 text-3xl">
-              {emoji}
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-surface-2 text-primary">
+              <ItemIcon id={icon} className="h-8 w-8" />
             </span>
             <input
               autoFocus
@@ -79,17 +79,21 @@ export function ItemForm({ initial, preset, onSave, onCancel }: Props) {
             <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
               Icon
             </p>
-            <div className="grid max-h-28 grid-cols-8 gap-1 overflow-y-auto rounded-xl bg-surface-2 p-2">
-              {EMOJI_CHOICES.map((e) => (
+            <div className="grid max-h-32 grid-cols-6 gap-1.5 overflow-y-auto rounded-xl bg-surface-2 p-2">
+              {ITEM_ICONS.map((opt) => (
                 <button
-                  key={e}
+                  key={opt.id}
                   type="button"
-                  onClick={() => setEmoji(e)}
-                  className={`grid aspect-square place-items-center rounded-lg text-xl transition-transform hover:scale-110 ${
-                    emoji === e ? "bg-primary/20 ring-2 ring-primary" : ""
+                  onClick={() => setIcon(opt.id)}
+                  aria-label={opt.label}
+                  aria-pressed={icon === opt.id}
+                  className={`grid aspect-square place-items-center rounded-lg transition-transform hover:scale-110 ${
+                    icon === opt.id
+                      ? "bg-primary/15 text-primary ring-2 ring-primary"
+                      : "text-muted"
                   }`}
                 >
-                  {e}
+                  <opt.Icon className="h-6 w-6" />
                 </button>
               ))}
             </div>

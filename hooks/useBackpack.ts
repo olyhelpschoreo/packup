@@ -97,8 +97,8 @@ export function useBackpack() {
     if (todayAllPacked) setStreak((s) => bumpStreak(s));
   }, [todayAllPacked]);
 
-  const addItem = useCallback((name: string, emoji: string, days: DayIndex[]) => {
-    setItems((prev) => [...prev, { id: newId(), name, emoji, days }]);
+  const addItem = useCallback((name: string, icon: string, days: DayIndex[]) => {
+    setItems((prev) => [...prev, { id: newId(), name, icon, days }]);
   }, []);
 
   const updateItem = useCallback(

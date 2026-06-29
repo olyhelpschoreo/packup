@@ -1,5 +1,6 @@
 import type { Item } from "./types";
 import { todayKey } from "./days";
+import { EMOJI_TO_ICON } from "../components/ItemIcons";
 
 const ITEMS_KEY = "packup.items";
 const CHECKS_KEY = "packup.checks";
@@ -14,7 +15,15 @@ export function loadItems(): Item[] | null {
     const raw = localStorage.getItem(ITEMS_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as Item[]) : null;
+    if (!Array.isArray(parsed)) return null;
+    // Migrate any pre-icon items (they had an `emoji` field) to icon ids.
+    return parsed.map((it) => {
+      if (it && typeof it.icon !== "string") {
+        const emoji = (it as { emoji?: string }).emoji;
+        return { ...it, icon: (emoji && EMOJI_TO_ICON[emoji]) || "backpack" };
+      }
+      return it;
+    }) as Item[];
   } catch {
     return null;
   }

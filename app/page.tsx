@@ -15,18 +15,20 @@ import { SUGGESTIONS } from "../lib/defaults";
 import { Header } from "../components/Header";
 import { ItemForm } from "../components/ItemForm";
 import { Confetti } from "../components/Confetti";
+import { ItemIcon } from "../components/ItemIcons";
 import {
   BackpackIcon,
   CheckIcon,
   PencilIcon,
   PlusIcon,
   SettingsIcon,
+  SparklesIcon,
   TrashIcon,
   UndoIcon,
 } from "../components/Icons";
 
 type Tab = "pack" | "items";
-type Editing = { item?: Item; preset?: { name: string; emoji: string } } | null;
+type Editing = { item?: Item; preset?: { name: string; icon: string } } | null;
 type Undo = { item: Item; index: number } | null;
 
 export default function Page() {
@@ -188,8 +190,12 @@ export default function Page() {
                     className="transition-all duration-500 ease-out"
                   />
                 </svg>
-                <span className="absolute inset-0 grid place-items-center text-sm font-bold">
-                  {allPacked ? "🎒" : `${Math.round(ringPct * 100)}%`}
+                <span className="absolute inset-0 grid place-items-center text-sm font-bold text-primary">
+                  {allPacked ? (
+                    <CheckIcon className="h-6 w-6" />
+                  ) : (
+                    `${Math.round(ringPct * 100)}%`
+                  )}
                 </span>
               </div>
             )}
@@ -197,7 +203,9 @@ export default function Page() {
 
           {allPacked && (
             <div className="animate-pop flex items-center gap-3 rounded-3xl border border-primary/30 bg-gradient-to-br from-teal-500/10 to-emerald-400/10 p-4">
-              <span className="text-3xl">🎉</span>
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
+                <SparklesIcon className="h-6 w-6" />
+              </span>
               <div>
                 <p className="font-bold text-primary">
                   {isToday ? "All packed!" : `${DAY_LONG[viewDay]} is ready!`}
@@ -205,7 +213,7 @@ export default function Page() {
                 <p className="text-sm text-muted">
                   {isToday
                     ? bp.streak > 1
-                      ? `${bp.streak}-day streak — you're on fire. 🔥`
+                      ? `${bp.streak}-day streak — you're on fire!`
                       : "You're ready for school. Go you."
                     : "Packed ahead — nice work."}
                 </p>
@@ -239,9 +247,11 @@ export default function Page() {
                     >
                       <span
                         aria-hidden
-                        className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-surface-2 text-2xl"
+                        className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-surface-2 ${
+                          checked ? "text-muted" : "text-primary"
+                        }`}
                       >
-                        {it.emoji}
+                        <ItemIcon id={it.icon} className="h-7 w-7" />
                       </span>
                       <span
                         className={`flex-1 font-medium transition-colors ${
@@ -294,7 +304,7 @@ export default function Page() {
                     onClick={() => setEditing({ preset: s })}
                     className="flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-sm font-medium active:scale-95"
                   >
-                    <span>{s.emoji}</span>
+                    <ItemIcon id={s.icon} className="h-4 w-4 text-primary" />
                     {s.name}
                   </button>
                 ))}
@@ -314,8 +324,8 @@ export default function Page() {
                   key={it.id}
                   className="flex items-center gap-3 rounded-3xl border border-border bg-surface p-3 shadow-[var(--shadow)]"
                 >
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-surface-2 text-2xl">
-                    {it.emoji}
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-surface-2 text-primary">
+                    <ItemIcon id={it.icon} className="h-7 w-7" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{it.name}</p>
@@ -388,9 +398,9 @@ export default function Page() {
         <ItemForm
           initial={editing.item}
           preset={editing.preset}
-          onSave={(name, emoji, days) => {
-            if (editing.item) bp.updateItem(editing.item.id, { name, emoji, days });
-            else bp.addItem(name, emoji, days);
+          onSave={(name, icon, days) => {
+            if (editing.item) bp.updateItem(editing.item.id, { name, icon, days });
+            else bp.addItem(name, icon, days);
             setEditing(null);
           }}
           onCancel={() => setEditing(null)}
@@ -437,8 +447,14 @@ function TabButton({
 function EmptyDay({ isToday, onAdd }: { isToday: boolean; onAdd: () => void }) {
   return (
     <div className="rounded-3xl border border-dashed border-border bg-surface/50 p-8 text-center">
-      <p className="text-4xl">{isToday ? "🎉" : "😌"}</p>
-      <p className="mt-2 font-semibold">
+      <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-surface-2 text-primary">
+        {isToday ? (
+          <SparklesIcon className="h-7 w-7" />
+        ) : (
+          <BackpackIcon className="h-7 w-7" />
+        )}
+      </span>
+      <p className="mt-3 font-semibold">
         {isToday ? "Nothing to pack today!" : "Nothing needed this day"}
       </p>
       <p className="mt-1 text-sm text-muted">
