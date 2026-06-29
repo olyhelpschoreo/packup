@@ -101,7 +101,7 @@ export default function Page() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-28 pt-5">
+    <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-28 pt-[max(1.25rem,env(safe-area-inset-top))]">
       <Confetti trigger={confetti} />
       <Header streak={bp.streak} packedToday={bp.packedToday} />
 
@@ -118,6 +118,8 @@ export default function Page() {
                   key={d}
                   type="button"
                   onClick={() => setViewDay(d)}
+                  aria-pressed={selected}
+                  aria-label={`${DAY_LONG[d]}${isTodayChip ? " (today)" : ""}`}
                   className={`flex flex-col items-center rounded-2xl py-2 text-xs font-semibold shadow-[var(--shadow)] transition-all active:scale-95 ${
                     selected
                       ? "bg-gradient-to-br from-teal-500 to-emerald-400 text-white"
@@ -159,8 +161,12 @@ export default function Page() {
               </p>
             </div>
             {dayItems.length > 0 && (
-              <div className="relative h-14 w-14 shrink-0">
-                <svg viewBox="0 0 56 56" className="h-14 w-14 -rotate-90">
+              <div
+                className="relative h-14 w-14 shrink-0"
+                role="img"
+                aria-label={`${packedCount} of ${dayItems.length} packed`}
+              >
+                <svg viewBox="0 0 56 56" className="h-14 w-14 -rotate-90" aria-hidden>
                   <circle
                     cx="28"
                     cy="28"
@@ -223,13 +229,18 @@ export default function Page() {
                     <button
                       type="button"
                       onClick={() => check(it.id)}
+                      aria-pressed={checked}
+                      aria-label={`${it.name}, ${checked ? "packed" : "not packed"}`}
                       className={`flex w-full items-center gap-3 rounded-3xl border p-3.5 text-left shadow-[var(--shadow)] transition-all active:scale-[0.98] ${
                         checked
                           ? "border-primary/40 bg-primary/5"
                           : "border-border bg-surface"
                       }`}
                     >
-                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-surface-2 text-2xl">
+                      <span
+                        aria-hidden
+                        className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-surface-2 text-2xl"
+                      >
                         {it.emoji}
                       </span>
                       <span
@@ -240,6 +251,7 @@ export default function Page() {
                         {it.name}
                       </span>
                       <span
+                        aria-hidden
                         className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 transition-colors ${
                           checked
                             ? "border-primary bg-primary text-primary-fg"
@@ -351,7 +363,7 @@ export default function Page() {
       )}
 
       {/* Bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface/80 backdrop-blur-lg">
+      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-surface/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg">
         <div className="mx-auto flex max-w-md">
           <TabButton
             label="Pack"

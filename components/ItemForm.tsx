@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { DayIndex, Item } from "../lib/types";
 import { EMOJI_CHOICES } from "../lib/defaults";
 import { SCHOOL_DAYS } from "../lib/days";
@@ -21,9 +21,26 @@ export function ItemForm({ initial, preset, onSave, onCancel }: Props) {
 
   const canSave = name.trim().length > 0 && days.length > 0;
 
+  // Close on Escape, like every native sheet.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
   return (
-    <div className="fixed inset-0 z-20 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
-      <div className="animate-pop w-full max-w-md rounded-t-3xl border border-border bg-surface p-5 shadow-xl sm:rounded-3xl">
+    <div
+      className="fixed inset-0 z-20 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+      aria-label={initial ? "Edit item" : "Add an item"}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="animate-pop max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border border-border bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-xl sm:rounded-3xl sm:pb-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">
             {initial ? "Edit item" : "Add to your list"}
